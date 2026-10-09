@@ -16,7 +16,10 @@ return new class extends Migration
             $table->string('name');
             $table->string('email')->unique();
             $table->enum('role', ['student', 'teacher', 'admin'])->default('student');
+            
+            // Sınıf ID'si (Migration sırası hatası vermemesi için constrained kullanılmadı, en güvenli yöntem)
             $table->foreignId('classroom_id')->nullable();
+            
             $table->timestamp('email_verified_at')->nullable();
             $table->string('password');
             $table->rememberToken();

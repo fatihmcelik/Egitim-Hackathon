@@ -15,6 +15,7 @@ return new class extends Migration
             $table->id();
             $table->string('name');
             $table->foreignId('teacher_id')->constrained('users')->cascadeOnDelete();
+            $table->string('code', 8)->unique()->nullable(); // YENİ EKLENEN SATIR: Sınıf Kodu
             $table->timestamps();
         });
     }
