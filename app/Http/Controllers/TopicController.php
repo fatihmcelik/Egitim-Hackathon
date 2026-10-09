@@ -127,6 +127,7 @@ class TopicController extends Controller
      */
     private function enrollUser($user, Topic $topic): void
     {
+        session(['current_topic_id' => $topic->id]);
         $user->topics()->syncWithoutDetaching([$topic->id]);
 
         $firstRegion = $topic->regions()->orderBy('order')->first();
