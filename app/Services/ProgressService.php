@@ -8,6 +8,7 @@ use App\Models\Region;
 use App\Models\Title;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class ProgressService
 {
@@ -15,6 +16,13 @@ class ProgressService
     private const XP_PER_CORRECT   = 20;  // doğru cevap başına XP
     private const XP_FIRST_BONUS   = 40;  // bölgeyi ilk kez tamamlama bonusu
     private const XP_REPLAY        = 10;  // tekrar çözümde sabit XP (XP farmlanmasın)
+
+    private const SKILL_MAX = 1000;
+    private const SKILLS = [
+        ['name' => 'Konu Bilgisi',  'icon' => '📚'],
+        ['name' => 'Problem Çözme', 'icon' => '🧩'],
+        ['name' => 'Hafıza',        'icon' => '🧠'],
+    ];
 
     /**
      * Tek bir sorunun denemesini kaydeder (öğretmen analizleri için).
@@ -32,9 +40,8 @@ class ProgressService
     }
 
     /**
-     * Quiz bittiğinde çağrılır. Geçtiyse XP verir, unvanı kontrol eder,
+     * Bölüm bittiğinde çağrılır. Geçtiyse XP ve yetenek puanı verir, unvanı kontrol eder,
      * bölgeyi tamamlar (sis sayacını sıfırlar) ve sıradaki bölgeyi açar.
-     * Arayüzün kullanması için sonuç dizisi döner.
      */
     public function finishRegion(User $user, Region $region, int $correct, int $total): array
     {
@@ -74,6 +81,9 @@ class ProgressService
         $result['old_title']  = $titleInfo['old_title'];
         $result['new_title']  = $titleInfo['new_title'];
 
+        // Yetenek puanları (profil sayfasındaki barlar)
+        $this->awardSkills($user, $region->topic_id, $correct, $alreadyCompleted);
+
         // Bölgeyi tamamla ve sis sayacını bugüne çek (tekrar çözmek sisi temizler)
         $user->regions()->syncWithoutDetaching([
             $region->id => [
@@ -101,6 +111,71 @@ class ProgressService
         }
 
         return $result;
+    }
+
+    /**
+     * Yetenek puanı verir. Yetenekler konu için yoksa oluşturur.
+     * - Konu Bilgisi: ilk denemede doğru bilinen soru sayısı kadar
+     * - Problem Çözme: bölgeyi (kod görevi dahil) tamamlamak
+     * - Hafıza: tekrar çözmek (sisi temizlemek) en çok puan getirir
+     */
+    private function awardSkills(User $user, int $topicId, int $correct, bool $replay): void
+    {
+        $gains = [
+            'Konu Bilgisi'  => $correct * 25,
+            'Problem Çözme' => $replay ? 10 : 60,
+            'Hafıza'        => $replay ? 40 : 15,
+        ];
+
+        foreach (self::SKILLS as $def) {
+            $skillId = $this->skillId($topicId, $def);
+
+            $current = (int) DB::table('skill_user')
+                ->where('user_id', $user->id)
+                ->where('skill_id', $skillId)
+                ->value('score');
+
+            $new = min(self::SKILL_MAX, $current + ($gains[$def['name']] ?? 0));
+
+            $user->skills()->syncWithoutDetaching([
+                $skillId => ['score' => $new],
+            ]);
+        }
+    }
+
+    /**
+     * Konuya ait yeteneğin id'sini döner; yoksa oluşturur.
+     * Sütunlar eksik olabileceği için Schema ile kontrol eder.
+     */
+    private function skillId(int $topicId, array $def): int
+    {
+        $hasTopic = Schema::hasColumn('skills', 'topic_id');
+
+        $query = DB::table('skills')->where('name', $def['name']);
+        if ($hasTopic) {
+            $query->where('topic_id', $topicId);
+        }
+
+        $id = $query->value('id');
+        if ($id) {
+            return (int) $id;
+        }
+
+        $data = ['name' => $def['name']];
+        if ($hasTopic) {
+            $data['topic_id'] = $topicId;
+        }
+        if (Schema::hasColumn('skills', 'icon')) {
+            $data['icon'] = $def['icon'];
+        }
+        if (Schema::hasColumn('skills', 'created_at')) {
+            $data['created_at'] = now();
+        }
+        if (Schema::hasColumn('skills', 'updated_at')) {
+            $data['updated_at'] = now();
+        }
+
+        return (int) DB::table('skills')->insertGetId($data);
     }
 
     /**
