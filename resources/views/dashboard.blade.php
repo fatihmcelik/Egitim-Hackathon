@@ -1,66 +1,174 @@
-<x-app-layout>
-    <div class="max-w-7xl mx-auto space-y-10 py-8 px-4 relative z-50 w-full">
-        
-        <!-- ÜST KARŞILAMA ALANI -->
-        <div class="flex flex-col md:flex-row justify-between items-center gap-6 bg-gradient-to-r from-[#0D1425] to-[#070B14] border border-blue-500/20 p-8 rounded-3xl shadow-2xl relative overflow-hidden">
-            <div class="absolute -left-10 -top-10 w-40 h-40 bg-blue-600/20 rounded-full blur-3xl pointer-events-none"></div>
-            
-            <div class="relative z-10">
-                <h1 class="text-4xl font-black text-white mb-2">Hoş Geldin, <span class="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 to-cyan-300">{{ Auth::user()->name }}!</span> 👋</h1>
-                <p class="text-gray-400 text-lg">Macerana kaldığın yerden devam et veya yeni ufuklara yelken aç.</p>
+<x-game-layout>
+    @php $has = fn ($n) => \Illuminate\Support\Facades\Route::has($n); @endphp
+
+    <div class="space-y-6">
+
+        <!-- ÜST: karşılama + devam et -->
+        <section class="rounded-3xl border border-white/10 bg-gradient-to-br from-[#10204a] to-[#0b1226] p-6 sm:p-8 flex flex-col lg:flex-row lg:items-center justify-between gap-6">
+            <div>
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-white">
+                    Hoş geldin, <span class="text-sky-300">{{ $user->name }}</span> 👋
+                </h1>
+                <p class="text-gray-400 mt-2">
+                    @if($topic)
+                        <span class="text-gray-200 font-semibold">{{ $topic->name }}</span> maceranda kaldığın yerden devam et.
+                    @else
+                        Henüz bir haritan yok. Yapay zekâ ile ilk haritanı oluştur.
+                    @endif
+                </p>
             </div>
-            
-            <div class="relative z-10 bg-[#11192D]/80 border border-white/5 px-6 py-4 rounded-2xl flex items-center gap-4 shadow-lg backdrop-blur-md">
-                <div class="w-12 h-12 bg-blue-500/20 rounded-full flex items-center justify-center text-blue-400">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+
+            <div class="w-full lg:w-[26rem] rounded-2xl border border-white/10 bg-[#0a1128]/80 p-5">
+                @if($topic)
+                    <div class="flex justify-between text-sm text-gray-300 mb-2">
+                        <span>Harita ilerlemen</span>
+                        <span class="font-semibold text-white">%{{ $progress }}</span>
+                    </div>
+                    <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-blue-500 to-indigo-400" style="width: {{ $progress }}%"></div>
+                    </div>
+
+                    @if($nextRegion)
+                        <p class="mt-4 text-sm text-gray-400">
+                            {{ $nextRegion->user_status === 'fogged' ? 'Tekrar etmen gereken bölge' : 'Sıradaki bölge' }}
+                        </p>
+                        <p class="font-bold text-white">{{ $nextRegion->order }}. {{ $nextRegion->name }}</p>
+                        <a href="{{ route('region.show', $nextRegion->id) }}"
+                           class="mt-4 inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition shadow-[0_0_20px_rgba(37,99,235,0.35)]">
+                            {{ $nextRegion->user_status === 'fogged' ? 'Sisi Temizle' : 'Devam Et' }} →
+                        </a>
+                    @else
+                        <p class="mt-4 text-emerald-300 font-semibold">🎉 Bu haritadaki tüm bölgeleri tamamladın!</p>
+                        <a href="{{ route('topics.index') }}" class="mt-3 inline-block text-sky-300 hover:text-sky-200 font-semibold">Yeni harita üret →</a>
+                    @endif
+                @else
+                    <a href="{{ route('topics.index') }}"
+                       class="inline-flex items-center gap-2 px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 transition">
+                        ✨ İlk Haritanı Oluştur
+                    </a>
+                @endif
+            </div>
+        </section>
+
+        <!-- ORTA: unvan ve XP -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <section class="rounded-3xl border border-white/10 bg-[#0b1226]/80 p-6">
+                <div class="text-sm text-gray-400 mb-1">Unvanın</div>
+                <div class="text-2xl font-extrabold text-white">👑 {{ $title?->name ?? 'Çaylak' }}</div>
+                @if($topic)
+                    <div class="mt-4 h-2 rounded-full bg-white/10 overflow-hidden">
+                        <div class="h-full rounded-full bg-gradient-to-r from-purple-500 to-indigo-400" style="width: {{ $titleProgress }}%"></div>
+                    </div>
+                    <p class="mt-2 text-sm text-gray-400">
+                        @if($nextTitle)
+                            Sıradaki unvan <span class="text-gray-200 font-semibold">{{ $nextTitle->name }}</span> için {{ max(0, $nextTitle->min_xp - $topicXp) }} XP kaldı.
+                        @else
+                            Bu konudaki en yüksek unvandasın.
+                        @endif
+                    </p>
+                @endif
+            </section>
+
+            <section class="rounded-3xl border border-white/10 bg-[#0b1226]/80 p-6">
+                <div class="text-sm text-gray-400 mb-1">Toplam XP</div>
+                <div class="text-2xl font-extrabold text-white">✨ {{ $totalXp }}</div>
+                @if($topic)
+                    <p class="mt-4 text-sm text-gray-400"><span class="text-gray-200 font-semibold">{{ $topic->name }}</span> haritasından {{ $topicXp }} XP.</p>
+                @endif
+            </section>
+        </div>
+
+        <!-- ALT: unutulma riski + yetenekler -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <section class="rounded-3xl border border-white/10 bg-[#0b1226]/80 p-6">
+                <h2 class="text-xl font-bold text-white mb-4">🌫️ Unutulma Riski</h2>
+
+                @forelse($fogRisks as $r)
+                    <div class="flex items-center justify-between gap-4 rounded-2xl border border-red-400/30 bg-red-900/10 px-4 py-3 mb-3">
+                        <div>
+                            <div class="font-semibold text-white">{{ $r->order }}. {{ $r->name }}</div>
+                            <div class="text-sm text-red-300">
+                                {{ $r->user_status === 'fogged' ? 'Sislendi, unutmaya başlıyorsun' : '1 gün içinde sislenecek' }}
+                            </div>
+                        </div>
+                        <a href="{{ route('region.show', $r->id) }}" class="shrink-0 px-4 py-2 rounded-xl text-sm font-bold text-white bg-red-500/70 hover:bg-red-500 transition">Tekrar Et</a>
+                    </div>
+                @empty
+                    <p class="text-gray-400">Şu an unutulma riski olan bölge yok. Her şey taze 🌿</p>
+                @endforelse
+            </section>
+
+            <section class="rounded-3xl border border-white/10 bg-[#0b1226]/80 p-6">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-xl font-bold text-white">🧬 Yeteneklerin</h2>
+                    @if($has('profile.show'))
+                        <a href="{{ route('profile.show') }}" class="text-sm text-sky-300 hover:text-sky-200">Tümünü gör →</a>
+                    @endif
                 </div>
+
+                <div class="space-y-4">
+                    @foreach($skills as $skill)
+                        @php $pct = min(100, ($skill['score'] / 1000) * 100); @endphp
+                        <div>
+                            <div class="flex justify-between text-sm mb-1.5">
+                                <span class="text-gray-200">{{ $skill['icon'] }} {{ $skill['name'] }}</span>
+                                <span class="text-gray-400 font-mono">{{ $skill['score'] }}</span>
+                            </div>
+                            <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                                <div class="h-full rounded-full bg-gradient-to-r from-cyan-400 to-blue-500" style="width: {{ $pct }}%"></div>
+                            </div>
+                        </div>
+                    @endforeach
+                </div>
+            </section>
+        </div>
+
+        <!-- SINIF -->
+        <section class="rounded-3xl border border-white/10 bg-[#0b1226]/80 p-6">
+            @if($classroom)
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-5">
+                    <div>
+                        <h2 class="text-xl font-bold text-white">🏫 {{ $classroom->name }}</h2>
+                        <p class="text-sm text-gray-400">Sınıf toplam XP: {{ $classXp }}</p>
+                    </div>
+                    <div class="sm:w-64">
+                        <div class="flex justify-between text-sm mb-1.5">
+                            <span class="text-gray-200 font-semibold">Sınıf Seviyesi {{ $classLevel }}</span>
+                            <span class="text-gray-400">%{{ $classProgress }}</span>
+                        </div>
+                        <div class="h-2.5 rounded-full bg-white/10 overflow-hidden">
+                            <div class="h-full rounded-full bg-gradient-to-r from-amber-400 to-orange-500" style="width: {{ $classProgress }}%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="space-y-2">
+                    @foreach($board as $i => $row)
+                        <div class="flex items-center justify-between rounded-xl px-4 py-2.5 {{ $row->id === $user->id ? 'bg-indigo-600/20 border border-indigo-400/40' : 'bg-white/5' }}">
+                            <div class="flex items-center gap-3">
+                                <span class="w-6 text-center font-bold text-gray-300">{{ $i + 1 }}</span>
+                                <span class="text-white">{{ $row->name }}{{ $row->id === $user->id ? ' (sen)' : '' }}</span>
+                            </div>
+                            <span class="font-mono text-gray-300">{{ (int) $row->total_xp }} XP</span>
+                        </div>
+                    @endforeach
+                </div>
+            @else
+                <h2 class="text-xl font-bold text-white mb-1">🏫 Sınıfına Katıl</h2>
+                <p class="text-sm text-gray-400 mb-4">Sınıf arkadaşlarınla yarış, sınıfın seviyesini birlikte yükseltin.</p>
+                <x-join-class />
+            @endif
+        </section>
+
+        <!-- ARENA -->
+        @if($has('arena.index'))
+            <section class="rounded-3xl border border-white/10 bg-gradient-to-r from-[#2a1646] to-[#0b1226] p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                 <div>
-                    <p class="text-xs text-gray-400 font-bold uppercase tracking-wider mb-1">Mevcut Seviye</p>
-                    <p class="text-xl font-black text-white">Hackathon Sürümü Aktif</p>
+                    <h2 class="text-xl font-bold text-white">⚔️ Arena</h2>
+                    <p class="text-sm text-gray-400">Bilgini botlara veya gerçek oyunculara karşı test et.</p>
                 </div>
-            </div>
-        </div>
-
-        <!-- MODÜL KARTLARI (Kaybolan Yönlendirme Menüleri) -->
-        <h2 class="text-2xl font-bold text-white mb-4 mt-8 px-2">Nereye Gitmek İstersin?</h2>
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-50">
-            
-            <a href="{{ route('topics.index') }}" class="group bg-[#0D1425] hover:bg-[#11192D] border border-white/5 hover:border-blue-500/50 p-8 rounded-3xl shadow-lg transition-all hover:-translate-y-1 relative overflow-hidden cursor-pointer block">
-                <div class="absolute right-0 top-0 w-32 h-32 bg-blue-500/10 rounded-full blur-3xl group-hover:bg-blue-500/20 transition-all pointer-events-none"></div>
-                <div class="w-14 h-14 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path></svg>
-                </div>
-                <h3 class="text-2xl font-bold text-white mb-2">Yapay Zeka ile Üret</h3>
-                <p class="text-gray-400">Gemini AI senin için özel bir öğrenme haritası hazırlasın.</p>
-            </a>
-
-            <a href="{{ route('map.index') }}" class="group bg-[#0D1425] hover:bg-[#11192D] border border-white/5 hover:border-cyan-500/50 p-8 rounded-3xl shadow-lg transition-all hover:-translate-y-1 relative overflow-hidden cursor-pointer block">
-                <div class="absolute right-0 top-0 w-32 h-32 bg-cyan-500/10 rounded-full blur-3xl group-hover:bg-cyan-500/20 transition-all pointer-events-none"></div>
-                <div class="w-14 h-14 bg-gradient-to-br from-cyan-500 to-blue-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 20l-5.447-2.724A1 1 0 013 16.382V5.618a1 1 0 011.447-.894L9 7m0 13l6-3m-6 3V7m6 10l4.553 2.276A1 1 0 0021 18.382V7.618a1 1 0 00-.553-.894L16 4m0 13V4m0 0L9 7"></path></svg>
-                </div>
-                <h3 class="text-2xl font-bold text-white mb-2">Maceraya Devam Et</h3>
-                <p class="text-gray-400">Önceden ürettiğin haritalarda görevleri tamamla ve XP kazan.</p>
-            </a>
-
-            <a href="{{ route('arena.index') }}" class="group bg-[#0D1425] hover:bg-[#11192D] border border-white/5 hover:border-orange-500/50 p-8 rounded-3xl shadow-lg transition-all hover:-translate-y-1 relative overflow-hidden cursor-pointer block">
-                <div class="absolute right-0 top-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl group-hover:bg-orange-500/20 transition-all pointer-events-none"></div>
-                <div class="w-14 h-14 bg-gradient-to-br from-orange-500 to-red-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path></svg>
-                </div>
-                <h3 class="text-2xl font-bold text-white mb-2">Arena (Savaş)</h3>
-                <p class="text-gray-400">Bilgini botlara veya gerçek oyunculara karşı test et.</p>
-            </a>
-
-            <a href="{{ route('profile.index') }}" class="group bg-[#0D1425] hover:bg-[#11192D] border border-white/5 hover:border-purple-500/50 p-8 rounded-3xl shadow-lg transition-all hover:-translate-y-1 relative overflow-hidden cursor-pointer block">
-                <div class="absolute right-0 top-0 w-32 h-32 bg-purple-500/10 rounded-full blur-3xl group-hover:bg-purple-500/20 transition-all pointer-events-none"></div>
-                <div class="w-14 h-14 bg-gradient-to-br from-purple-500 to-pink-600 rounded-2xl flex items-center justify-center text-white mb-6 shadow-lg">
-                    <svg class="w-7 h-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path></svg>
-                </div>
-                <h3 class="text-2xl font-bold text-white mb-2">Yetenek Profilin</h3>
-                <p class="text-gray-400">Gelişim barlarını, seviyeni ve kazandığın unvanları incele.</p>
-            </a>
-            
-        </div>
+                <a href="{{ route('arena.index') }}" class="px-6 py-3 rounded-xl font-bold text-white bg-gradient-to-r from-purple-600 to-fuchsia-600 hover:from-purple-500 hover:to-fuchsia-500 transition text-center">Arena'ya Git</a>
+            </section>
+        @endif
     </div>
-</x-app-layout>
+</x-game-layout>
