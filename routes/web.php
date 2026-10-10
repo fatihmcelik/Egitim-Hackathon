@@ -4,28 +4,26 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\TopicController;
 use App\Http\Controllers\MapController;
 use App\Http\Controllers\RegionController;
-use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\TeacherDashboardController;
 use App\Http\Controllers\DuelController;
 use App\Http\Controllers\StudySessionController;
+use App\Http\Controllers\HomeController;
+use Illuminate\Support\Facades\Auth;
 
 /* Genel Erişim (Herkese Açık) */
-
 Route::get('/', function () {
-    return view('welcome');
+    return Auth::check() ? redirect()->route('dashboard') : view('welcome');
 })->name('home');
 
 
 /* Giriş Yapmış Kullanıcılar (Öğrenci, Öğretmen, Admin) */
 Route::middleware(['auth'])->group(function () {
 
-    // YENİ: Ana Karşılama Ekranı (Hub / Komuta Merkezi)
-    Route::get('/dashboard', function () {
-        return view('dashboard');
-    })->name('dashboard');
+    // Ana Karşılama Ekranı (HomeController veriyi hazırlar: $user, $topic, $progress ...)
+    Route::get('/dashboard', [HomeController::class, 'index'])->name('dashboard');
 
-    // YENİ: Profil Sayfası (Yetenek barları ve XP detayları)
-    Route::get('/profile', [ProfileController::class, 'index'])->name('profile.index');
+    // Profil Sayfası (Yetenek barları ve XP detayları)
+    Route::get('/profile', fn () => view('profile.show', ['user' => Auth::user()]))->name('profile.show');
 
     // 1. Konu Seçimi ve Yapay Zeka
     Route::get('/topics', [TopicController::class, 'index'])->name('topics.index');
